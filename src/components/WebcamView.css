@@ -1,0 +1,73 @@
+.webcam-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.webcam-view__stage {
+  width: 640px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--code-bg, #1f2028);
+  border: 1px solid var(--border, #2e303a);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webcam-view__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.webcam-view__placeholder {
+  color: var(--text, #9ca3af);
+  padding: 16px;
+  text-align: center;
+}
+
+.webcam-view__error {
+  color: #f87171;
+}
+
+.webcam-view__controls {
+  display: flex;
+  gap: 12px;
+}
+
+.webcam-view__controls button {
+  font-family: var(--mono, monospace);
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--accent-border, #aa3bff);
+  background: var(--accent-bg, rgba(170, 59, 255, 0.1));
+  color: var(--text-h, #08060d);
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.webcam-view__controls button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.webcam-view__controls button.secondary {
+  background: transparent;
+  border-color: var(--border, #2e303a);
+}
+
+.webcam-view__capture {
+  text-align: center;
+}
+
+.webcam-view__capture img {
+  width: 320px;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border, #2e303a);
+}
