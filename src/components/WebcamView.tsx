@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useEyeTracking } from '../hooks/useEyeTracking'
 import './WebcamView.css'
 
 interface WebcamViewProps {
@@ -10,11 +11,17 @@ type CameraStatus = 'idle' | 'starting' | 'streaming' | 'error'
 function WebcamView({ onCapture }: WebcamViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
   const [status, setStatus] = useState<CameraStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [captureUrl, setCaptureUrl] = useState<string | null>(null)
+
+  const { leftEye, rightEye, videoWidth, videoHeight } = useEyeTracking(
+    videoRef,
+    status === 'streaming',
+  )
 
   useEffect(() => {
     return () => {
@@ -22,6 +29,46 @@ function WebcamView({ onCapture }: WebcamViewProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Draws eye markers on an overlay canvas positioned on top of the video.
+  // The video uses object-fit: cover, so eye positions (in the video's
+  // intrinsic pixel space) must be mapped through the same crop/scale math.
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current
+    const video = videoRef.current
+    if (!canvas || !video) return
+
+    const containerWidth = video.clientWidth
+    const containerHeight = video.clientHeight
+    canvas.width = containerWidth
+    canvas.height = containerHeight
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, containerWidth, containerHeight)
+
+    if (!videoWidth || !videoHeight) return
+
+    const scale = Math.max(
+      containerWidth / videoWidth,
+      containerHeight / videoHeight,
+    )
+    const offsetX = (containerWidth - videoWidth * scale) / 2
+    const offsetY = (containerHeight - videoHeight * scale) / 2
+
+    const drawEye = (eye: { x: number; y: number } | null) => {
+      if (!eye) return
+      const x = eye.x * scale + offsetX
+      const y = eye.y * scale + offsetY
+      ctx.beginPath()
+      ctx.arc(x, y, 6, 0, Math.PI * 2)
+      ctx.fillStyle = '#22d3ee'
+      ctx.fill()
+    }
+
+    drawEye(leftEye)
+    drawEye(rightEye)
+  }, [leftEye, rightEye, videoWidth, videoHeight])
 
   function stopStream() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -85,6 +132,11 @@ function WebcamView({ onCapture }: WebcamViewProps) {
           muted
           style={{ display: status === 'streaming' ? 'block' : 'none' }}
         />
+        <canvas
+          ref={overlayCanvasRef}
+          className="webcam-view__overlay"
+          style={{ display: status === 'streaming' ? 'block' : 'none' }}
+        />
         {status !== 'streaming' && (
           <div className="webcam-view__placeholder">
             {status === 'starting' && <p>Starting camera…</p>}
@@ -93,6 +145,13 @@ function WebcamView({ onCapture }: WebcamViewProps) {
           </div>
         )}
       </div>
+
+      {status === 'streaming' && (
+        <p className="webcam-view__eye-readout">
+          Left eye: {formatPosition(leftEye)} · Right eye:{' '}
+          {formatPosition(rightEye)}
+        </p>
+      )}
 
       <div className="webcam-view__controls">
         {status !== 'streaming' ? (
@@ -125,6 +184,11 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       )}
     </div>
   )
+}
+
+function formatPosition(position: { x: number; y: number } | null): string {
+  if (!position) return 'not detected'
+  return `(${Math.round(position.x)}, ${Math.round(position.y)})`
 }
 
 export default WebcamView
