@@ -114,3 +114,10 @@
   font-size: 14px;
   color: var(--text-h, #08060d);
 }
+
+.webcam-view__head-pose {
+  margin-top: 4px;
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  color: var(--text, #9ca3af);
+}
