@@ -18,19 +18,31 @@ type Delegate = 'CPU' | 'GPU'
 const DELEGATE: Delegate =
   import.meta.env.VITE_MEDIAPIPE_DELEGATE === 'CPU' ? 'CPU' : 'GPU'
 
-let landmarkerPromise: Promise<FaceLandmarker> | null = null
+let videoLandmarkerPromise: Promise<FaceLandmarker> | null = null
+let imageLandmarkerPromise: Promise<FaceLandmarker> | null = null
 
 /**
- * Lazily creates (and caches) a single FaceLandmarker instance for the app.
- * Safe to call multiple times — subsequent calls reuse the in-flight/created instance.
+ * Lazily creates (and caches) a single FaceLandmarker instance configured for
+ * `detectForVideo` over the live webcam stream.
  */
-export function getFaceLandmarker(
-  options: Partial<FaceLandmarkerOptions> = {},
-): Promise<FaceLandmarker> {
-  if (!landmarkerPromise) {
-    landmarkerPromise = createFaceLandmarker(options)
+export function getVideoFaceLandmarker(): Promise<FaceLandmarker> {
+  if (!videoLandmarkerPromise) {
+    videoLandmarkerPromise = createFaceLandmarker({ runningMode: 'VIDEO' })
   }
-  return landmarkerPromise
+  return videoLandmarkerPromise
+}
+
+/**
+ * Lazily creates (and caches) a single FaceLandmarker instance configured for
+ * `detect` over one-off still images (e.g. a captured frame). Kept separate
+ * from the video instance since MediaPipe's VIDEO running mode is stateful
+ * and expects a single continuous timestamp sequence from one source.
+ */
+export function getImageFaceLandmarker(): Promise<FaceLandmarker> {
+  if (!imageLandmarkerPromise) {
+    imageLandmarkerPromise = createFaceLandmarker({ runningMode: 'IMAGE' })
+  }
+  return imageLandmarkerPromise
 }
 
 async function createFaceLandmarker(
@@ -43,8 +55,9 @@ async function createFaceLandmarker(
       modelAssetPath: MODEL_ASSET_URL,
       delegate: DELEGATE,
     },
-    runningMode: 'VIDEO',
     numFaces: 1,
+    outputFaceBlendshapes: true,
+    runningMode: 'VIDEO',
     ...options,
   })
 }

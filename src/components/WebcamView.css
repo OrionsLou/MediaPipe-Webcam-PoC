@@ -87,3 +87,30 @@
   border-radius: 8px;
   border: 1px solid var(--border, #2e303a);
 }
+
+.webcam-view__method-slider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  color: var(--text, #9ca3af);
+}
+
+.webcam-view__method-slider span.active {
+  color: var(--text-h, #08060d);
+  font-weight: 600;
+}
+
+.webcam-view__method-slider input[type='range'] {
+  width: 100px;
+}
+
+.webcam-view__eye-state {
+  margin-top: 8px;
+  font-family: var(--mono, monospace);
+  font-size: 14px;
+  color: var(--text-h, #08060d);
+}
