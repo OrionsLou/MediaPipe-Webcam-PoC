@@ -5,3 +5,8 @@
   gap: 8px;
   padding: 40px 16px;
 }
+
+.app__model-status {
+  font-family: var(--mono, monospace);
+  font-size: 14px;
+}
