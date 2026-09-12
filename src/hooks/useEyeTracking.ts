@@ -4,6 +4,7 @@ import {
   LEFT_IRIS_CENTER_INDEX,
   RIGHT_IRIS_CENTER_INDEX,
 } from '../mediapipe/eyeLandmarks'
+import { getRollFromEyePositions } from '../mediapipe/headPose'
 
 export interface EyePosition {
   x: number
@@ -16,6 +17,8 @@ interface UseEyeTrackingResult {
   // Intrinsic pixel dimensions of the video frame the positions above are relative to.
   videoWidth: number
   videoHeight: number
+  // Head tilt (roll), in degrees, derived from the eye positions above.
+  tiltDegrees: number | null
 }
 
 /**
@@ -31,6 +34,7 @@ export function useEyeTracking(
   const [rightEye, setRightEye] = useState<EyePosition | null>(null)
   const [videoWidth, setVideoWidth] = useState(0)
   const [videoHeight, setVideoHeight] = useState(0)
+  const [tiltDegrees, setTiltDegrees] = useState<number | null>(null)
 
   const lastVideoTimeRef = useRef(-1)
 
@@ -38,6 +42,7 @@ export function useEyeTracking(
     if (!active || status !== 'ready' || !faceLandmarker) {
       setLeftEye(null)
       setRightEye(null)
+      setTiltDegrees(null)
       return
     }
 
@@ -56,11 +61,24 @@ export function useEyeTracking(
           if (landmarks) {
             setVideoWidth(video.videoWidth)
             setVideoHeight(video.videoHeight)
-            setRightEye(toPixelPosition(landmarks[RIGHT_IRIS_CENTER_INDEX], video))
-            setLeftEye(toPixelPosition(landmarks[LEFT_IRIS_CENTER_INDEX], video))
+
+            const right = toPixelPosition(
+              landmarks[RIGHT_IRIS_CENTER_INDEX],
+              video,
+            )
+            const left = toPixelPosition(
+              landmarks[LEFT_IRIS_CENTER_INDEX],
+              video,
+            )
+            setRightEye(right)
+            setLeftEye(left)
+            setTiltDegrees(
+              left && right ? getRollFromEyePositions(left, right) : null,
+            )
           } else {
             setLeftEye(null)
             setRightEye(null)
+            setTiltDegrees(null)
           }
         }
       }
@@ -75,7 +93,7 @@ export function useEyeTracking(
     }
   }, [active, status, faceLandmarker, videoRef])
 
-  return { leftEye, rightEye, videoWidth, videoHeight }
+  return { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees }
 }
 
 function toPixelPosition(

@@ -40,7 +40,10 @@ export function getVideoFaceLandmarker(): Promise<FaceLandmarker> {
  */
 export function getImageFaceLandmarker(): Promise<FaceLandmarker> {
   if (!imageLandmarkerPromise) {
-    imageLandmarkerPromise = createFaceLandmarker({ runningMode: 'IMAGE' })
+    imageLandmarkerPromise = createFaceLandmarker({
+      runningMode: 'IMAGE',
+      outputFacialTransformationMatrixes: true,
+    })
   }
   return imageLandmarkerPromise
 }
