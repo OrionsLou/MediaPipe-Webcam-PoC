@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FaceLandmarker } from '@mediapipe/tasks-vision'
-import { getFaceLandmarker } from '../mediapipe/faceLandmarker'
+import { getVideoFaceLandmarker } from '../mediapipe/faceLandmarker'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
 
@@ -24,7 +24,7 @@ export function useFaceLandmarker(): UseFaceLandmarkerResult {
   useEffect(() => {
     cancelledRef.current = false
 
-    getFaceLandmarker()
+    getVideoFaceLandmarker()
       .then((landmarker) => {
         if (cancelledRef.current) return
         setFaceLandmarker(landmarker)
