@@ -7,6 +7,7 @@ import {
   getEyeStateFromEAR,
   type EyeDetectionMethod,
 } from '../mediapipe/eyeState'
+import { getHeadPoseFromMatrix } from '../mediapipe/headPose'
 import './WebcamView.css'
 
 interface WebcamViewProps {
@@ -31,10 +32,8 @@ function WebcamView({ onCapture }: WebcamViewProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [method, setMethod] = useState<EyeDetectionMethod>('blendshapes')
 
-  const { leftEye, rightEye, videoWidth, videoHeight } = useEyeTracking(
-    videoRef,
-    status === 'streaming',
-  )
+  const { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees } =
+    useEyeTracking(videoRef, status === 'streaming')
 
   const eyeState = useMemo(() => {
     if (!captureResult) return null
@@ -42,6 +41,11 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       ? getEyeStateFromBlendshapes(captureResult)
       : getEyeStateFromEAR(captureResult)
   }, [captureResult, method])
+
+  const headPose = useMemo(() => {
+    const matrix = captureResult?.facialTransformationMatrixes?.[0]
+    return matrix ? getHeadPoseFromMatrix(matrix) : null
+  }, [captureResult])
 
   useEffect(() => {
     return () => {
@@ -183,7 +187,7 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       {status === 'streaming' && (
         <p className="webcam-view__eye-readout">
           Left eye: {formatPosition(leftEye)} · Right eye:{' '}
-          {formatPosition(rightEye)}
+          {formatPosition(rightEye)} · Tilt: {formatDegrees(tiltDegrees)}
         </p>
       )}
 
@@ -243,6 +247,14 @@ function WebcamView({ onCapture }: WebcamViewProps) {
               </>
             )}
           </p>
+
+          {!isAnalyzing && !analysisError && headPose && (
+            <p className="webcam-view__head-pose">
+              Pitch: {formatDegrees(headPose.pitch)} · Yaw:{' '}
+              {formatDegrees(headPose.yaw)} · Roll:{' '}
+              {formatDegrees(headPose.roll)}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -252,6 +264,11 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 function formatPosition(position: { x: number; y: number } | null): string {
   if (!position) return 'not detected'
   return `(${Math.round(position.x)}, ${Math.round(position.y)})`
+}
+
+function formatDegrees(degrees: number | null): string {
+  if (degrees === null) return 'not detected'
+  return `${Math.round(degrees)}°`
 }
 
 export default WebcamView
