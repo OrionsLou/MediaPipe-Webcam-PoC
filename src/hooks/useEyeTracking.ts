@@ -37,14 +37,10 @@ export function useEyeTracking(
   const [tiltDegrees, setTiltDegrees] = useState<number | null>(null)
 
   const lastVideoTimeRef = useRef(-1)
+  const isTracking = active && status === 'ready' && !!faceLandmarker
 
   useEffect(() => {
-    if (!active || status !== 'ready' || !faceLandmarker) {
-      setLeftEye(null)
-      setRightEye(null)
-      setTiltDegrees(null)
-      return
-    }
+    if (!isTracking) return
 
     const video = videoRef.current
     if (!video) return
@@ -91,9 +87,15 @@ export function useEyeTracking(
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [active, status, faceLandmarker, videoRef])
+  }, [isTracking, faceLandmarker, videoRef])
 
-  return { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees }
+  return {
+    leftEye: isTracking ? leftEye : null,
+    rightEye: isTracking ? rightEye : null,
+    videoWidth,
+    videoHeight,
+    tiltDegrees: isTracking ? tiltDegrees : null,
+  }
 }
 
 function toPixelPosition(
