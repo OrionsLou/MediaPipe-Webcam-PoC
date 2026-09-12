@@ -1,14 +1,31 @@
 .webcam-view {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 28px;
+  width: 100%;
 }
 
-.webcam-view__stage {
+.webcam-view__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 320px;
+  max-width: 600px;
+}
+
+.webcam-view__panel h3 {
+  margin: 0;
+  text-align: center;
+}
+
+/* Shared box every panel's media (live video, captured image, or
+   segmentation result) is rendered in, so all three stay the same size. */
+.webcam-view__media {
   position: relative;
-  width: 640px;
-  max-width: 100%;
+  width: 100%;
   aspect-ratio: 4 / 3;
   background: var(--code-bg, #1f2028);
   border: 1px solid var(--border, #2e303a);
@@ -17,6 +34,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+img.webcam-view__media {
+  object-fit: cover;
 }
 
 .webcam-view__video {
@@ -35,7 +56,7 @@
   pointer-events: none;
 }
 
-.webcam-view__placeholder {
+.webcam-view__placeholder-text {
   color: var(--text, #9ca3af);
   padding: 16px;
   text-align: center;
@@ -47,12 +68,15 @@
 
 .webcam-view__eye-readout {
   font-family: var(--mono, monospace);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text, #9ca3af);
+  text-align: center;
 }
 
 .webcam-view__controls {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
 }
 
@@ -77,23 +101,11 @@
   border-color: var(--border, #2e303a);
 }
 
-.webcam-view__capture {
-  text-align: center;
-}
-
-.webcam-view__capture img {
-  width: 320px;
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border, #2e303a);
-}
-
 .webcam-view__method-slider {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 12px;
   font-family: var(--mono, monospace);
   font-size: 13px;
   color: var(--text, #9ca3af);
@@ -109,8 +121,6 @@
 }
 
 .webcam-view__method-select {
-  display: block;
-  margin: 12px auto 20px;
   padding: 6px 10px;
   font-family: var(--mono, monospace);
   font-size: 13px;
@@ -121,19 +131,17 @@
 }
 
 .webcam-view__eye-state {
-  margin-top: 8px;
+  margin: 0;
+  text-align: center;
   font-family: var(--mono, monospace);
   font-size: 14px;
   color: var(--text-h, #08060d);
 }
 
 .webcam-view__head-pose {
-  margin-top: 4px;
+  margin: 0;
+  text-align: center;
   font-family: var(--mono, monospace);
   font-size: 13px;
   color: var(--text, #9ca3af);
-}
-
-.webcam-view__capture h3 {
-  margin-top: 24px;
 }
