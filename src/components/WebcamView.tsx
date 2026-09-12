@@ -259,62 +259,73 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 
   return (
     <div className="webcam-view">
-      <div className="webcam-view__stage">
-        <video
-          ref={videoRef}
-          className="webcam-view__video"
-          playsInline
-          muted
-          style={{ display: status === 'streaming' ? 'block' : 'none' }}
-        />
-        <canvas
-          ref={overlayCanvasRef}
-          className="webcam-view__overlay"
-          style={{ display: status === 'streaming' ? 'block' : 'none' }}
-        />
-        {status !== 'streaming' && (
-          <div className="webcam-view__placeholder">
-            {status === 'starting' && <p>Starting camera…</p>}
-            {status === 'idle' && <p>Camera is off</p>}
-            {status === 'error' && <p className="webcam-view__error">{error}</p>}
-          </div>
+      <section className="webcam-view__panel">
+        <h3>Live View</h3>
+
+        <div className="webcam-view__media webcam-view__stage">
+          <video
+            ref={videoRef}
+            className="webcam-view__video"
+            playsInline
+            muted
+            style={{ display: status === 'streaming' ? 'block' : 'none' }}
+          />
+          <canvas
+            ref={overlayCanvasRef}
+            className="webcam-view__overlay"
+            style={{ display: status === 'streaming' ? 'block' : 'none' }}
+          />
+          {status !== 'streaming' && (
+            <div className="webcam-view__placeholder-text">
+              {status === 'starting' && <p>Starting camera…</p>}
+              {status === 'idle' && <p>Camera is off</p>}
+              {status === 'error' && (
+                <p className="webcam-view__error">{error}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {status === 'streaming' && (
+          <p className="webcam-view__eye-readout">
+            Left eye: {formatPosition(leftEye)} · Right eye:{' '}
+            {formatPosition(rightEye)} · Tilt: {formatDegrees(tiltDegrees)}
+          </p>
         )}
-      </div>
 
-      {status === 'streaming' && (
-        <p className="webcam-view__eye-readout">
-          Left eye: {formatPosition(leftEye)} · Right eye:{' '}
-          {formatPosition(rightEye)} · Tilt: {formatDegrees(tiltDegrees)}
-        </p>
-      )}
-
-      <div className="webcam-view__controls">
-        {status !== 'streaming' ? (
-          <button
-            type="button"
-            onClick={startCamera}
-            disabled={status === 'starting'}
-          >
-            {status === 'starting' ? 'Starting…' : 'Start Camera'}
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={captureImage}>
-              Capture Image
+        <div className="webcam-view__controls">
+          {status !== 'streaming' ? (
+            <button
+              type="button"
+              onClick={startCamera}
+              disabled={status === 'starting'}
+            >
+              {status === 'starting' ? 'Starting…' : 'Start Camera'}
             </button>
-            <button type="button" onClick={stopCamera} className="secondary">
-              Stop Camera
-            </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <button type="button" onClick={captureImage}>
+                Capture Image
+              </button>
+              <button type="button" onClick={stopCamera} className="secondary">
+                Stop Camera
+              </button>
+            </>
+          )}
+        </div>
 
-      <canvas ref={canvasRef} className="webcam-view__canvas" hidden />
+        <canvas ref={canvasRef} className="webcam-view__canvas" hidden />
+      </section>
 
       {captureUrl && (
-        <div className="webcam-view__capture">
+        <section className="webcam-view__panel">
           <h3>Last Capture</h3>
-          <img src={captureUrl} alt="Captured frame from webcam" />
+
+          <img
+            className="webcam-view__media"
+            src={captureUrl}
+            alt="Captured frame from webcam"
+          />
 
           <div className="webcam-view__method-slider">
             <span className={method === 'blendshapes' ? 'active' : ''}>
@@ -350,8 +361,34 @@ function WebcamView({ onCapture }: WebcamViewProps) {
               {tilted ? 'Head is tilted' : 'Head is not tilted'}
             </p>
           )}
+        </section>
+      )}
 
+      {captureUrl && (
+        <section className="webcam-view__panel">
           <h3>Background Removal</h3>
+
+          {backgroundReplacedUrl ? (
+            <img
+              className="webcam-view__media"
+              src={backgroundReplacedUrl}
+              alt="Captured frame with background replaced by white"
+            />
+          ) : (
+            <div className="webcam-view__media">
+              <div className="webcam-view__placeholder-text">
+                {isSegmentingActive && <p>Segmenting…</p>}
+                {!isSegmentingActive && segmentationErrorActive && (
+                  <p className="webcam-view__error">
+                    {segmentationErrorActive}
+                  </p>
+                )}
+                {!isSegmentingActive && !segmentationErrorActive && (
+                  <p>Segmentation unavailable</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <select
             className="webcam-view__method-select"
@@ -365,31 +402,7 @@ function WebcamView({ onCapture }: WebcamViewProps) {
             <option value="confidence">Confidence Mask</option>
             <option value="multiclass">Multiclass</option>
           </select>
-
-          {isSegmentingActive && (
-            <p className="webcam-view__eye-state">Segmenting…</p>
-          )}
-          {!isSegmentingActive && segmentationErrorActive && (
-            <p className="webcam-view__eye-state">
-              Error: {segmentationErrorActive}
-            </p>
-          )}
-          {!isSegmentingActive &&
-            !segmentationErrorActive &&
-            !backgroundReplacedUrl && (
-              <p className="webcam-view__eye-state">
-                Segmentation unavailable
-              </p>
-            )}
-          {!isSegmentingActive &&
-            !segmentationErrorActive &&
-            backgroundReplacedUrl && (
-              <img
-                src={backgroundReplacedUrl}
-                alt="Captured frame with background replaced by white"
-              />
-            )}
-        </div>
+        </section>
       )}
     </div>
   )
