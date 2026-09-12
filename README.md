@@ -107,3 +107,9 @@ in [`src/mediapipe/headPose.ts`](src/mediapipe/headPose.ts) and
 [`src/mediapipe/backgroundReplace.ts`](src/mediapipe/backgroundReplace.ts)
 for how they were chosen (mostly first-guess defaults meant to be tuned
 against a real camera).
+
+## License
+
+[MIT](LICENSE). Note that `@mediapipe/tasks-vision` itself is licensed under
+Apache-2.0 — see its [package on npm](https://www.npmjs.com/package/@mediapipe/tasks-vision)
+for its own terms.
