@@ -7,7 +7,7 @@ import {
   getEyeStateFromEAR,
   type EyeDetectionMethod,
 } from '../mediapipe/eyeState'
-import { getHeadPoseFromMatrix } from '../mediapipe/headPose'
+import { getHeadPoseFromMatrix, isHeadTilted } from '../mediapipe/headPose'
 import './WebcamView.css'
 
 interface WebcamViewProps {
@@ -46,6 +46,8 @@ function WebcamView({ onCapture }: WebcamViewProps) {
     const matrix = captureResult?.facialTransformationMatrixes?.[0]
     return matrix ? getHeadPoseFromMatrix(matrix) : null
   }, [captureResult])
+
+  const tilted = headPose ? isHeadTilted(headPose) : null
 
   useEffect(() => {
     return () => {
@@ -248,11 +250,9 @@ function WebcamView({ onCapture }: WebcamViewProps) {
             )}
           </p>
 
-          {!isAnalyzing && !analysisError && headPose && (
+          {!isAnalyzing && !analysisError && tilted !== null && (
             <p className="webcam-view__head-pose">
-              Pitch: {formatDegrees(headPose.pitch)} · Yaw:{' '}
-              {formatDegrees(headPose.yaw)} · Roll:{' '}
-              {formatDegrees(headPose.roll)}
+              {tilted ? 'Head is tilted' : 'Head is not tilted'}
             </p>
           )}
         </div>

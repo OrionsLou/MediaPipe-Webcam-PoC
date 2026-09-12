@@ -59,3 +59,25 @@ export function getHeadPoseFromMatrix(matrix: Matrix): HeadPose | null {
 
   return { pitch, yaw, roll }
 }
+
+const DEFAULT_TILT_THRESHOLD_DEGREES = 15
+
+// A head is considered tilted if any axis exceeds this many degrees from
+// neutral. First guess, configure after testing or per use case — override
+// via VITE_TILT_THRESHOLD_DEGREES.
+export const TILT_THRESHOLD_DEGREES = (() => {
+  const raw = Number(import.meta.env.VITE_TILT_THRESHOLD_DEGREES)
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_TILT_THRESHOLD_DEGREES
+})()
+
+/**
+ * Whether a head pose counts as "tilted", based on whether pitch, yaw, or
+ * roll exceeds TILT_THRESHOLD_DEGREES in either direction.
+ */
+export function isHeadTilted(pose: HeadPose): boolean {
+  return (
+    Math.abs(pose.pitch) > TILT_THRESHOLD_DEGREES ||
+    Math.abs(pose.yaw) > TILT_THRESHOLD_DEGREES ||
+    Math.abs(pose.roll) > TILT_THRESHOLD_DEGREES
+  )
+}
