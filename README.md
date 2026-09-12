@@ -108,6 +108,18 @@ in [`src/mediapipe/headPose.ts`](src/mediapipe/headPose.ts) and
 for how they were chosen (mostly first-guess defaults meant to be tuned
 against a real camera).
 
+## Privacy
+
+There is no backend. Your webcam feed and any captured images are processed
+entirely on-device by MediaPipe and never uploaded anywhere by this app.
+
+Per [MediaPipe's own disclosure](https://www.npmjs.com/package/@mediapipe/tasks-vision),
+the Tasks Vision APIs used here do send Google metrics about performance and
+API usage (not your images or video) — see the linked page for details. If
+you deploy this app for others to use, you're responsible for obtaining
+whatever informed consent applicable law requires for that metrics
+collection.
+
 ## License
 
 [MIT](LICENSE). Note that `@mediapipe/tasks-vision` itself is licensed under
