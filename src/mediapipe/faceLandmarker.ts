@@ -43,7 +43,7 @@ async function createFaceLandmarker(
       modelAssetPath: MODEL_ASSET_URL,
       delegate: DELEGATE,
     },
-    runningMode: 'IMAGE',
+    runningMode: 'VIDEO',
     numFaces: 1,
     ...options,
   })

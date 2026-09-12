@@ -6,6 +6,7 @@
 }
 
 .webcam-view__stage {
+  position: relative;
   width: 640px;
   max-width: 100%;
   aspect-ratio: 4 / 3;
@@ -25,6 +26,15 @@
   transform: scaleX(-1);
 }
 
+.webcam-view__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
 .webcam-view__placeholder {
   color: var(--text, #9ca3af);
   padding: 16px;
@@ -33,6 +43,12 @@
 
 .webcam-view__error {
   color: #f87171;
+}
+
+.webcam-view__eye-readout {
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  color: var(--text, #9ca3af);
 }
 
 .webcam-view__controls {
