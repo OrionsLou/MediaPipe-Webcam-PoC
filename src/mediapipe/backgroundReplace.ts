@@ -1,6 +1,6 @@
 import type { ImageSegmenterResult } from '@mediapipe/tasks-vision'
 
-export type SegmentationMethod = 'category' | 'confidence'
+export type SegmentationMethod = 'category' | 'confidence' | 'multiclass'
 
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
@@ -22,7 +22,7 @@ export const CONFIDENCE_THRESHOLD = (() => {
 const PERSON_CATEGORY_INDEX = 0
 
 /**
- * Replaces background pixels with black using the segmenter's category mask
+ * Replaces background pixels with white using the segmenter's category mask
  * — a hard per-pixel classification the model already computed. Cheap, but
  * gives an all-or-nothing edge (no partial/antialiased transitions).
  */
@@ -44,7 +44,7 @@ export function replaceBackgroundWithCategoryMask(
 }
 
 /**
- * Replaces background pixels with black using the segmenter's confidence
+ * Replaces background pixels with white using the segmenter's confidence
  * mask — a continuous per-pixel "is this the person" score — thresholded
  * against CONFIDENCE_THRESHOLD. More tunable than the category mask, at the
  * cost of picking a cutoff yourself.
@@ -62,6 +62,37 @@ export function replaceBackgroundWithConfidenceMask(
     mask.width,
     mask.height,
     (maskIndex) => confidences[maskIndex] < CONFIDENCE_THRESHOLD,
+  )
+}
+
+// selfie_multiclass's category mask labels: 0=background, 1=hair,
+// 2=body-skin, 3=face-skin, 4=clothes, 5=others — per Google's published
+// model card. Unlike the binary selfie_segmenter (whose card turned out to
+// be wrong), this hasn't been independently verified against actual output
+// yet — confirm the "person" categories look right before relying on it.
+const MULTICLASS_BACKGROUND_CATEGORY_INDEX = 0
+
+/**
+ * Replaces background pixels with white using the multiclass segmenter's
+ * category mask. Same person-vs-background outcome as the other two
+ * methods, but useful for comparing how much finer-grained attention (hair,
+ * skin, clothes as distinct categories) affects edge quality.
+ */
+export function replaceBackgroundWithMulticlassMask(
+  source: HTMLCanvasElement,
+  result: ImageSegmenterResult,
+): HTMLCanvasElement | null {
+  const mask = result.categoryMask
+  if (!mask) return null
+
+  const categories = mask.getAsUint8Array()
+
+  return replaceBackground(
+    source,
+    mask.width,
+    mask.height,
+    (maskIndex) =>
+      categories[maskIndex] === MULTICLASS_BACKGROUND_CATEGORY_INDEX,
   )
 }
 
@@ -96,9 +127,9 @@ function replaceBackground(
 
       if (isBackground(maskIndex)) {
         const pixelIndex = (y * output.width + x) * 4
-        data[pixelIndex] = 0
-        data[pixelIndex + 1] = 0
-        data[pixelIndex + 2] = 0
+        data[pixelIndex] = 255
+        data[pixelIndex + 1] = 255
+        data[pixelIndex + 2] = 255
       }
     }
   }

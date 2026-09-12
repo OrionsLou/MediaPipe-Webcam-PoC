@@ -5,7 +5,10 @@ import type {
 } from '@mediapipe/tasks-vision'
 import { useEyeTracking } from '../hooks/useEyeTracking'
 import { getImageFaceLandmarker } from '../mediapipe/faceLandmarker'
-import { getImageSegmenter } from '../mediapipe/imageSegmenter'
+import {
+  getImageSegmenter,
+  getMulticlassImageSegmenter,
+} from '../mediapipe/imageSegmenter'
 import {
   getEyeStateFromBlendshapes,
   getEyeStateFromEAR,
@@ -15,6 +18,7 @@ import { getHeadPoseFromMatrix, isHeadTilted } from '../mediapipe/headPose'
 import {
   replaceBackgroundWithCategoryMask,
   replaceBackgroundWithConfidenceMask,
+  replaceBackgroundWithMulticlassMask,
   type SegmentationMethod,
 } from '../mediapipe/backgroundReplace'
 import './WebcamView.css'
@@ -50,6 +54,12 @@ function WebcamView({ onCapture }: WebcamViewProps) {
   const [segmentationMethod, setSegmentationMethod] =
     useState<SegmentationMethod>('category')
 
+  const [multiclassResult, setMulticlassResult] =
+    useState<ImageSegmenterResult | null>(null)
+  const [isMulticlassSegmenting, setIsMulticlassSegmenting] = useState(false)
+  const [multiclassSegmentationError, setMulticlassSegmentationError] =
+    useState<string | null>(null)
+
   const { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees } =
     useEyeTracking(videoRef, status === 'streaming')
 
@@ -69,15 +79,29 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 
   const backgroundReplacedUrl = useMemo(() => {
     const canvas = canvasRef.current
-    if (!segmentationResult || !canvas) return null
+    if (!canvas) return null
 
-    const output =
-      segmentationMethod === 'category'
-        ? replaceBackgroundWithCategoryMask(canvas, segmentationResult)
-        : replaceBackgroundWithConfidenceMask(canvas, segmentationResult)
+    let output = null
+    if (segmentationMethod === 'multiclass') {
+      output = multiclassResult
+        ? replaceBackgroundWithMulticlassMask(canvas, multiclassResult)
+        : null
+    } else if (segmentationResult) {
+      output =
+        segmentationMethod === 'category'
+          ? replaceBackgroundWithCategoryMask(canvas, segmentationResult)
+          : replaceBackgroundWithConfidenceMask(canvas, segmentationResult)
+    }
 
     return output ? output.toDataURL('image/png') : null
-  }, [segmentationResult, segmentationMethod])
+  }, [segmentationResult, multiclassResult, segmentationMethod])
+
+  const isSegmentingActive =
+    segmentationMethod === 'multiclass' ? isMulticlassSegmenting : isSegmenting
+  const segmentationErrorActive =
+    segmentationMethod === 'multiclass'
+      ? multiclassSegmentationError
+      : segmentationError
 
   useEffect(() => {
     return () => {
@@ -185,8 +209,13 @@ function WebcamView({ onCapture }: WebcamViewProps) {
     setSegmentationError(null)
     setIsSegmenting(true)
 
+    setMulticlassResult(null)
+    setMulticlassSegmentationError(null)
+    setIsMulticlassSegmenting(true)
+
     void analyzeFace(canvas)
     void analyzeSegmentation(canvas)
+    void analyzeMulticlassSegmentation(canvas)
   }
 
   async function analyzeFace(canvas: HTMLCanvasElement) {
@@ -212,6 +241,19 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       )
     } finally {
       setIsSegmenting(false)
+    }
+  }
+
+  async function analyzeMulticlassSegmentation(canvas: HTMLCanvasElement) {
+    try {
+      const segmenter = await getMulticlassImageSegmenter()
+      setMulticlassResult(segmenter.segment(canvas))
+    } catch (err) {
+      setMulticlassSegmentationError(
+        err instanceof Error ? err.message : 'Background segmentation failed',
+      )
+    } finally {
+      setIsMulticlassSegmenting(false)
     }
   }
 
@@ -311,45 +353,42 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 
           <h3>Background Removal</h3>
 
-          <div className="webcam-view__method-slider">
-            <span className={segmentationMethod === 'category' ? 'active' : ''}>
-              Category Mask
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={1}
-              value={segmentationMethod === 'confidence' ? 1 : 0}
-              onChange={(event) =>
-                setSegmentationMethod(
-                  event.target.value === '1' ? 'confidence' : 'category',
-                )
-              }
-              aria-label="Background segmentation method"
-            />
-            <span className={segmentationMethod === 'confidence' ? 'active' : ''}>
-              Confidence Mask
-            </span>
-          </div>
+          <select
+            className="webcam-view__method-select"
+            value={segmentationMethod}
+            onChange={(event) =>
+              setSegmentationMethod(event.target.value as SegmentationMethod)
+            }
+            aria-label="Background segmentation method"
+          >
+            <option value="category">Category Mask</option>
+            <option value="confidence">Confidence Mask</option>
+            <option value="multiclass">Multiclass</option>
+          </select>
 
-          {isSegmenting && (
+          {isSegmentingActive && (
             <p className="webcam-view__eye-state">Segmenting…</p>
           )}
-          {!isSegmenting && segmentationError && (
+          {!isSegmentingActive && segmentationErrorActive && (
             <p className="webcam-view__eye-state">
-              Error: {segmentationError}
+              Error: {segmentationErrorActive}
             </p>
           )}
-          {!isSegmenting && !segmentationError && !backgroundReplacedUrl && (
-            <p className="webcam-view__eye-state">Segmentation unavailable</p>
-          )}
-          {!isSegmenting && !segmentationError && backgroundReplacedUrl && (
-            <img
-              src={backgroundReplacedUrl}
-              alt="Captured frame with background replaced by black"
-            />
-          )}
+          {!isSegmentingActive &&
+            !segmentationErrorActive &&
+            !backgroundReplacedUrl && (
+              <p className="webcam-view__eye-state">
+                Segmentation unavailable
+              </p>
+            )}
+          {!isSegmentingActive &&
+            !segmentationErrorActive &&
+            backgroundReplacedUrl && (
+              <img
+                src={backgroundReplacedUrl}
+                alt="Captured frame with background replaced by white"
+              />
+            )}
         </div>
       )}
     </div>

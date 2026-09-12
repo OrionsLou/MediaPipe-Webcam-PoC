@@ -108,6 +108,18 @@
   width: 100px;
 }
 
+.webcam-view__method-select {
+  display: block;
+  margin: 12px auto 20px;
+  padding: 6px 10px;
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  color: var(--text-h, #08060d);
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #2e303a);
+  border-radius: 6px;
+}
+
 .webcam-view__eye-state {
   margin-top: 8px;
   font-family: var(--mono, monospace);
