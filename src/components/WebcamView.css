@@ -121,3 +121,7 @@
   font-size: 13px;
   color: var(--text, #9ca3af);
 }
+
+.webcam-view__capture h3 {
+  margin-top: 24px;
+}

@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FaceLandmarkerResult } from '@mediapipe/tasks-vision'
+import type {
+  FaceLandmarkerResult,
+  ImageSegmenterResult,
+} from '@mediapipe/tasks-vision'
 import { useEyeTracking } from '../hooks/useEyeTracking'
 import { getImageFaceLandmarker } from '../mediapipe/faceLandmarker'
+import { getImageSegmenter } from '../mediapipe/imageSegmenter'
 import {
   getEyeStateFromBlendshapes,
   getEyeStateFromEAR,
   type EyeDetectionMethod,
 } from '../mediapipe/eyeState'
 import { getHeadPoseFromMatrix, isHeadTilted } from '../mediapipe/headPose'
+import {
+  replaceBackgroundWithCategoryMask,
+  replaceBackgroundWithConfidenceMask,
+  type SegmentationMethod,
+} from '../mediapipe/backgroundReplace'
 import './WebcamView.css'
 
 interface WebcamViewProps {
@@ -32,6 +41,15 @@ function WebcamView({ onCapture }: WebcamViewProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [method, setMethod] = useState<EyeDetectionMethod>('blendshapes')
 
+  const [segmentationResult, setSegmentationResult] =
+    useState<ImageSegmenterResult | null>(null)
+  const [isSegmenting, setIsSegmenting] = useState(false)
+  const [segmentationError, setSegmentationError] = useState<string | null>(
+    null,
+  )
+  const [segmentationMethod, setSegmentationMethod] =
+    useState<SegmentationMethod>('category')
+
   const { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees } =
     useEyeTracking(videoRef, status === 'streaming')
 
@@ -48,6 +66,18 @@ function WebcamView({ onCapture }: WebcamViewProps) {
   }, [captureResult])
 
   const tilted = headPose ? isHeadTilted(headPose) : null
+
+  const backgroundReplacedUrl = useMemo(() => {
+    const canvas = canvasRef.current
+    if (!segmentationResult || !canvas) return null
+
+    const output =
+      segmentationMethod === 'category'
+        ? replaceBackgroundWithCategoryMask(canvas, segmentationResult)
+        : replaceBackgroundWithConfidenceMask(canvas, segmentationResult)
+
+    return output ? output.toDataURL('image/png') : null
+  }, [segmentationResult, segmentationMethod])
 
   useEffect(() => {
     return () => {
@@ -146,10 +176,20 @@ function WebcamView({ onCapture }: WebcamViewProps) {
     onCapture?.(imageData, canvas)
 
     setCaptureUrl(canvas.toDataURL('image/png'))
+
     setCaptureResult(null)
     setAnalysisError(null)
     setIsAnalyzing(true)
 
+    setSegmentationResult(null)
+    setSegmentationError(null)
+    setIsSegmenting(true)
+
+    void analyzeFace(canvas)
+    void analyzeSegmentation(canvas)
+  }
+
+  async function analyzeFace(canvas: HTMLCanvasElement) {
     try {
       const landmarker = await getImageFaceLandmarker()
       setCaptureResult(landmarker.detect(canvas))
@@ -159,6 +199,19 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       )
     } finally {
       setIsAnalyzing(false)
+    }
+  }
+
+  async function analyzeSegmentation(canvas: HTMLCanvasElement) {
+    try {
+      const segmenter = await getImageSegmenter()
+      setSegmentationResult(segmenter.segment(canvas))
+    } catch (err) {
+      setSegmentationError(
+        err instanceof Error ? err.message : 'Background segmentation failed',
+      )
+    } finally {
+      setIsSegmenting(false)
     }
   }
 
@@ -254,6 +307,48 @@ function WebcamView({ onCapture }: WebcamViewProps) {
             <p className="webcam-view__head-pose">
               {tilted ? 'Head is tilted' : 'Head is not tilted'}
             </p>
+          )}
+
+          <h3>Background Removal</h3>
+
+          <div className="webcam-view__method-slider">
+            <span className={segmentationMethod === 'category' ? 'active' : ''}>
+              Category Mask
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={1}
+              value={segmentationMethod === 'confidence' ? 1 : 0}
+              onChange={(event) =>
+                setSegmentationMethod(
+                  event.target.value === '1' ? 'confidence' : 'category',
+                )
+              }
+              aria-label="Background segmentation method"
+            />
+            <span className={segmentationMethod === 'confidence' ? 'active' : ''}>
+              Confidence Mask
+            </span>
+          </div>
+
+          {isSegmenting && (
+            <p className="webcam-view__eye-state">Segmenting…</p>
+          )}
+          {!isSegmenting && segmentationError && (
+            <p className="webcam-view__eye-state">
+              Error: {segmentationError}
+            </p>
+          )}
+          {!isSegmenting && !segmentationError && !backgroundReplacedUrl && (
+            <p className="webcam-view__eye-state">Segmentation unavailable</p>
+          )}
+          {!isSegmenting && !segmentationError && backgroundReplacedUrl && (
+            <img
+              src={backgroundReplacedUrl}
+              alt="Captured frame with background replaced by black"
+            />
           )}
         </div>
       )}
