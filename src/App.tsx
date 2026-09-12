@@ -1,8 +1,17 @@
 import WebcamView from './components/WebcamView'
+import ConsentGate from './components/ConsentGate'
 import { useFaceLandmarker } from './hooks/useFaceLandmarker'
 import './App.css'
 
 function App() {
+  return (
+    <ConsentGate>
+      <AppContent />
+    </ConsentGate>
+  )
+}
+
+function AppContent() {
   const { status, error } = useFaceLandmarker()
 
   return (
