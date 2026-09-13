@@ -60,7 +60,7 @@ function WebcamView({ onCapture }: WebcamViewProps) {
   const [multiclassSegmentationError, setMulticlassSegmentationError] =
     useState<string | null>(null)
 
-  const { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees } =
+  const { leftEye, rightEye, videoWidth, videoHeight, tiltDegrees, faceBoundingBox } =
     useEyeTracking(videoRef, status === 'streaming')
 
   const eyeState = useMemo(() => {
@@ -146,9 +146,20 @@ function WebcamView({ onCapture }: WebcamViewProps) {
       ctx.fill()
     }
 
+    if (faceBoundingBox) {
+      ctx.strokeStyle = '#22d3ee'
+      ctx.lineWidth = 2
+      ctx.strokeRect(
+        faceBoundingBox.x * scale + offsetX,
+        faceBoundingBox.y * scale + offsetY,
+        faceBoundingBox.width * scale,
+        faceBoundingBox.height * scale,
+      )
+    }
+
     drawEye(leftEye)
     drawEye(rightEye)
-  }, [leftEye, rightEye, videoWidth, videoHeight])
+  }, [leftEye, rightEye, videoWidth, videoHeight, faceBoundingBox])
 
   function stopStream() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
