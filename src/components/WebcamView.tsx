@@ -15,6 +15,8 @@ import {
   type EyeDetectionMethod,
 } from '../mediapipe/eyeState'
 import { getHeadPoseFromMatrix, isHeadTilted } from '../mediapipe/headPose'
+import { getFaceBoundingBox } from '../mediapipe/faceBoundingBox'
+import { cropToBoundingBox } from '../mediapipe/cropToBoundingBox'
 import {
   replaceBackgroundWithCategoryMask,
   replaceBackgroundWithConfidenceMask,
@@ -77,6 +79,16 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 
   const tilted = headPose ? isHeadTilted(headPose) : null
 
+  // Face bounding box for the captured still (distinct from the live-view
+  // one) — used to crop the background-removed result to a
+  // passport-photo-style headshot.
+  const captureFaceBoundingBox = useMemo(() => {
+    const landmarks = captureResult?.faceLandmarks?.[0]
+    const canvas = canvasRef.current
+    if (!landmarks || !canvas) return null
+    return getFaceBoundingBox(landmarks, canvas.width, canvas.height)
+  }, [captureResult])
+
   const backgroundReplacedUrl = useMemo(() => {
     const canvas = canvasRef.current
     if (!canvas) return null
@@ -93,8 +105,17 @@ function WebcamView({ onCapture }: WebcamViewProps) {
           : replaceBackgroundWithConfidenceMask(canvas, segmentationResult)
     }
 
+    if (output && captureFaceBoundingBox) {
+      output = cropToBoundingBox(output, captureFaceBoundingBox)
+    }
+
     return output ? output.toDataURL('image/png') : null
-  }, [segmentationResult, multiclassResult, segmentationMethod])
+  }, [
+    segmentationResult,
+    multiclassResult,
+    segmentationMethod,
+    captureFaceBoundingBox,
+  ])
 
   const isSegmentingActive =
     segmentationMethod === 'multiclass' ? isMulticlassSegmenting : isSegmenting
@@ -381,9 +402,9 @@ function WebcamView({ onCapture }: WebcamViewProps) {
 
           {backgroundReplacedUrl ? (
             <img
-              className="webcam-view__media"
+              className="webcam-view__media webcam-view__media--contain"
               src={backgroundReplacedUrl}
-              alt="Captured frame with background replaced by white"
+              alt="Face cropped to a passport-photo-style headshot with background replaced by white"
             />
           ) : (
             <div className="webcam-view__media">
