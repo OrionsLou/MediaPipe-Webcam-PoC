@@ -40,6 +40,12 @@ img.webcam-view__media {
   object-fit: cover;
 }
 
+/* The passport-style crop is portrait-oriented, unlike the panel's 4:3 box —
+   use "contain" so nothing gets clipped, letterboxing instead. */
+img.webcam-view__media--contain {
+  object-fit: contain;
+}
+
 .webcam-view__video {
   width: 100%;
   height: 100%;
