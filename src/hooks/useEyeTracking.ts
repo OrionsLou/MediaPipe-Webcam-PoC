@@ -5,6 +5,7 @@ import {
   RIGHT_IRIS_CENTER_INDEX,
 } from '../mediapipe/eyeLandmarks'
 import { getRollFromEyePositions } from '../mediapipe/headPose'
+import { getFaceBoundingBox, type BoundingBox } from '../mediapipe/faceBoundingBox'
 
 export interface EyePosition {
   x: number
@@ -19,6 +20,8 @@ interface UseEyeTrackingResult {
   videoHeight: number
   // Head tilt (roll), in degrees, derived from the eye positions above.
   tiltDegrees: number | null
+  // Bounding box tightly wrapping the detected face, in the same pixel space.
+  faceBoundingBox: BoundingBox | null
 }
 
 /**
@@ -35,6 +38,9 @@ export function useEyeTracking(
   const [videoWidth, setVideoWidth] = useState(0)
   const [videoHeight, setVideoHeight] = useState(0)
   const [tiltDegrees, setTiltDegrees] = useState<number | null>(null)
+  const [faceBoundingBox, setFaceBoundingBox] = useState<BoundingBox | null>(
+    null,
+  )
 
   const lastVideoTimeRef = useRef(-1)
   const isTracking = active && status === 'ready' && !!faceLandmarker
@@ -71,10 +77,14 @@ export function useEyeTracking(
             setTiltDegrees(
               left && right ? getRollFromEyePositions(left, right) : null,
             )
+            setFaceBoundingBox(
+              getFaceBoundingBox(landmarks, video.videoWidth, video.videoHeight),
+            )
           } else {
             setLeftEye(null)
             setRightEye(null)
             setTiltDegrees(null)
+            setFaceBoundingBox(null)
           }
         }
       }
@@ -95,6 +105,7 @@ export function useEyeTracking(
     videoWidth,
     videoHeight,
     tiltDegrees: isTracking ? tiltDegrees : null,
+    faceBoundingBox: isTracking ? faceBoundingBox : null,
   }
 }
 
