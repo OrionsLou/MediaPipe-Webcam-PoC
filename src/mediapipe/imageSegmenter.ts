@@ -1,5 +1,6 @@
 import { FilesetResolver, ImageSegmenter } from '@mediapipe/tasks-vision'
 import { DELEGATE, WASM_BASE_URL } from './visionRuntime'
+import { getOrFetchModelBuffer } from '../cache/modelCache'
 
 // Google's hosted "selfie segmenter" model — a 2-category (background,
 // person) segmentation model tuned for a single foreground subject.
@@ -44,14 +45,17 @@ export function getMulticlassImageSegmenter(): Promise<ImageSegmenter> {
 }
 
 async function createImageSegmenter(
-  modelAssetPath: string,
+  modelAssetUrl: string,
   options: { outputConfidenceMasks: boolean },
 ): Promise<ImageSegmenter> {
-  const vision = await FilesetResolver.forVisionTasks(WASM_BASE_URL)
+  const [vision, modelAssetBuffer] = await Promise.all([
+    FilesetResolver.forVisionTasks(WASM_BASE_URL),
+    getOrFetchModelBuffer(modelAssetUrl),
+  ])
 
   return ImageSegmenter.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath,
+      modelAssetBuffer,
       delegate: DELEGATE,
     },
     runningMode: 'IMAGE',
