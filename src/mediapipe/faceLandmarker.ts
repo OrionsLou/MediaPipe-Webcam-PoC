@@ -4,6 +4,7 @@ import {
   type FaceLandmarkerOptions,
 } from '@mediapipe/tasks-vision'
 import { DELEGATE, WASM_BASE_URL } from './visionRuntime'
+import { getOrFetchModelBuffer } from '../cache/modelCache'
 
 // Google's hosted model asset for face landmark detection + blendshapes.
 const MODEL_ASSET_URL =
@@ -42,11 +43,14 @@ export function getImageFaceLandmarker(): Promise<FaceLandmarker> {
 async function createFaceLandmarker(
   options: Partial<FaceLandmarkerOptions>,
 ): Promise<FaceLandmarker> {
-  const vision = await FilesetResolver.forVisionTasks(WASM_BASE_URL)
+  const [vision, modelAssetBuffer] = await Promise.all([
+    FilesetResolver.forVisionTasks(WASM_BASE_URL),
+    getOrFetchModelBuffer(MODEL_ASSET_URL),
+  ])
 
   return FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: MODEL_ASSET_URL,
+      modelAssetBuffer,
       delegate: DELEGATE,
     },
     numFaces: 1,
