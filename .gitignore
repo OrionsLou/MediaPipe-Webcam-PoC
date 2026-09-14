@@ -21,6 +21,9 @@ dist-ssr
 .vite
 node_modules/.vite
 
+# vite-plugin-pwa dev-mode service worker output
+dev-dist
+
 # TypeScript incremental build info
 *.tsbuildinfo
 
