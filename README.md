@@ -108,6 +108,65 @@ in [`src/mediapipe/headPose.ts`](src/mediapipe/headPose.ts) and
 for how they were chosen (mostly first-guess defaults meant to be tuned
 against a real camera).
 
+## Design decisions
+
+A few notable tradeoffs made along the way:
+
+- **Two `FaceLandmarker` instances instead of one.** MediaPipe fixes a task's
+  running mode (`VIDEO` vs `IMAGE`) at creation time, so live eye tracking and
+  still-image analysis can't share a single instance. The cost is a second
+  WASM/model load, but it keeps each mode's API (`detectForVideo` vs
+  `detect`) simple rather than routing one instance through both.
+
+- **Two independent eye-open detectors, togglable.** Blendshape scores
+  (`eyeBlinkLeft`/`eyeBlinkRight`) and eye-aspect-ratio (EAR) from landmark
+  geometry solve the same problem differently — one is a model output, the
+  other a geometric heuristic. Rather than picking one, both are wired up
+  with a slider to compare them directly, since neither is obviously more
+  reliable across lighting/angle conditions.
+
+- **Background removal runs on the captured still, not the live feed.**
+  `ImageSegmenter` could run per-frame like the eye tracker does, but
+  continuous segmentation is meaningfully more expensive than continuous
+  landmark detection. Since background replacement isn't the live-tracking
+  feature, it's scoped to the single captured frame to keep the video loop
+  responsive.
+
+- **Three segmentation methods across two models.** Category mask and
+  confidence mask both use `selfie_segmenter` (binary person/background) —
+  they exist side by side mainly to compare threshold-based vs hard-labeled
+  output. Multiclass uses `selfie_multiclass` instead, which trades speed for
+  finer-grained categories (hair, skin, clothes), useful for eyeballing edge
+  quality against the binary model.
+
+- **GPU delegate by default, CPU as a fallback via env var.** GPU delegate is
+  faster but not universally supported/stable across browsers and hardware.
+  Rather than auto-detecting, it's an explicit `VITE_MEDIAPIPE_DELEGATE`
+  toggle so behavior is predictable and debuggable rather than silently
+  switching paths.
+
+- **No backend, by design.** Every model runs client-side via WASM; nothing
+  is uploaded. This was a constraint from the start rather than an
+  optimization — see [Privacy](#privacy) — which also ruled out easier
+  server-side approaches (e.g. running a heavier segmentation model remotely)
+  in favor of what's feasible in-browser.
+
+- **Model bytes cached in IndexedDB, deliberately scoped narrow.**
+  [`src/cache/modelCache.ts`](src/cache/modelCache.ts) caches the fetched
+  MediaPipe model assets (`.task`/`.tflite` files) so repeat and offline
+  loads skip the CDN round-trip, using the official `modelAssetBuffer` API to
+  hand MediaPipe pre-fetched bytes instead of a URL. This only covers the
+  model files — the WASM runtime files served alongside them are a separate,
+  less well-defined caching problem and were left uncached for now. Revisiting
+  after more research and tinkering.
+
+- **App shell precached via `vite-plugin-pwa`, cache failures degrade to a
+  network fetch.** [`vite.config.ts`](vite.config.ts) precaches the built
+  HTML/JS/CSS so a page refresh works offline, and both the IndexedDB read
+  and write in the model cache are wrapped to fall back to (or continue past
+  failure to) a normal network fetch rather than erroring out — offline
+  support degrades gracefully instead of being all-or-nothing.
+
 ## Privacy
 
 There is no backend. Your webcam feed and any captured images are processed
