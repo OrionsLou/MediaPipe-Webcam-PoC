@@ -15,7 +15,11 @@ import {
   type EyeDetectionMethod,
 } from '../mediapipe/eyeState'
 import { getHeadPoseFromMatrix, isHeadTilted } from '../mediapipe/headPose'
-import { getFaceBoundingBox } from '../mediapipe/faceBoundingBox'
+import {
+  getFaceBoundingBox,
+  getHeadClipping,
+  isHeadClipped,
+} from '../mediapipe/faceBoundingBox'
 import { cropToBoundingBox } from '../mediapipe/cropToBoundingBox'
 import {
   replaceBackgroundWithCategoryMask,
@@ -87,6 +91,15 @@ function WebcamView({ onCapture }: WebcamViewProps) {
     const canvas = canvasRef.current
     if (!landmarks || !canvas) return null
     return getFaceBoundingBox(landmarks, canvas.width, canvas.height)
+  }, [captureResult])
+
+  // Whether the passport-photo-style crop above is missing part of the head
+  // because it extended past the edge of the captured frame.
+  const captureHeadClipping = useMemo(() => {
+    const landmarks = captureResult?.faceLandmarks?.[0]
+    const canvas = canvasRef.current
+    if (!landmarks || !canvas) return null
+    return getHeadClipping(landmarks, canvas.width, canvas.height)
   }, [captureResult])
 
   const backgroundReplacedUrl = useMemo(() => {
@@ -401,11 +414,19 @@ function WebcamView({ onCapture }: WebcamViewProps) {
           <h3>Background Removal</h3>
 
           {backgroundReplacedUrl ? (
-            <img
-              className="webcam-view__media webcam-view__media--contain"
-              src={backgroundReplacedUrl}
-              alt="Face cropped to a passport-photo-style headshot with background replaced by white"
-            />
+            <>
+              <img
+                className="webcam-view__media webcam-view__media--contain"
+                src={backgroundReplacedUrl}
+                alt="Face cropped to a passport-photo-style headshot with background replaced by white"
+              />
+              {captureHeadClipping && isHeadClipped(captureHeadClipping) && (
+                <p className="webcam-view__warning">
+                  Warning: {describeHeadClipping(captureHeadClipping)}. Move
+                  back from the camera or recenter and capture again.
+                </p>
+              )}
+            </>
           ) : (
             <div className="webcam-view__media">
               <div className="webcam-view__placeholder-text">
@@ -448,6 +469,21 @@ function formatPosition(position: { x: number; y: number } | null): string {
 function formatDegrees(degrees: number | null): string {
   if (degrees === null) return 'not detected'
   return `${Math.round(degrees)}°`
+}
+
+function describeHeadClipping(clipping: {
+  top: boolean
+  bottom: boolean
+  left: boolean
+  right: boolean
+}): string {
+  const edges: string[] = []
+  if (clipping.top) edges.push('top of the head')
+  if (clipping.bottom) edges.push('chin')
+  if (clipping.left) edges.push('left side')
+  if (clipping.right) edges.push('right side')
+
+  return `${edges.join(' and ')} may be cut off`
 }
 
 export default WebcamView
