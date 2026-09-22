@@ -7,7 +7,7 @@ export interface BoundingBox {
   height: number
 }
 
-const DEFAULT_MARGIN_RATIO = 0.3
+const DEFAULT_MARGIN_RATIO = 0.25
 
 // Margin added around the tight face-mesh box, as a fraction of its
 // width/height. First guess, configure after testing or per use case —
@@ -23,17 +23,39 @@ export const FACE_BOX_MARGIN_RATIO = (() => {
 // sides/bottom rather than expanding the box evenly in every direction.
 const TOP_MARGIN_MULTIPLIER = 2
 
-/**
- * Bounding box (in pixel space) around a face, expanded by
- * FACE_BOX_MARGIN_RATIO beyond the landmarks' tight contour to approximate a
- * passport-photo-style crop that includes the whole head and hair — not
- * just the facial skin the mesh actually covers.
- */
-export function getFaceBoundingBox(
+// Whether the desired (unclamped) passport-photo box around a face would
+// have extended past the frame on a given edge — i.e. that part of the head
+// is missing from the captured frame, not just tightly cropped.
+export interface HeadClipping {
+  top: boolean
+  bottom: boolean
+  left: boolean
+  right: boolean
+}
+
+export const NO_HEAD_CLIPPING: HeadClipping = {
+  top: false,
+  bottom: false,
+  left: false,
+  right: false,
+}
+
+export function isHeadClipped(clipping: HeadClipping): boolean {
+  return clipping.top || clipping.bottom || clipping.left || clipping.right
+}
+
+interface FaceBoundingBoxResult {
+  box: BoundingBox
+  // Whether the box was clamped to the frame on each edge, meaning the head
+  // (or hair) likely extends beyond what the camera captured there.
+  clipping: HeadClipping
+}
+
+function computeFaceBoundingBox(
   landmarks: NormalizedLandmark[],
   videoWidth: number,
   videoHeight: number,
-): BoundingBox | null {
+): FaceBoundingBoxResult | null {
   if (landmarks.length === 0) return null
 
   let minX = Infinity
@@ -51,17 +73,58 @@ export function getFaceBoundingBox(
   const marginX = (maxX - minX) * FACE_BOX_MARGIN_RATIO
   const marginY = (maxY - minY) * FACE_BOX_MARGIN_RATIO
 
+  const desiredMinX = minX - marginX
+  const desiredMaxX = maxX + marginX
+  const desiredMinY = minY - marginY * TOP_MARGIN_MULTIPLIER
+  const desiredMaxY = maxY + marginY
+
   // Clamp to the frame's normalized [0, 1] bounds — the margin can otherwise
   // push the box off-frame for a face near an edge.
-  const expandedMinX = Math.max(0, minX - marginX)
-  const expandedMaxX = Math.min(1, maxX + marginX)
-  const expandedMinY = Math.max(0, minY - marginY * TOP_MARGIN_MULTIPLIER)
-  const expandedMaxY = Math.min(1, maxY + marginY)
+  const expandedMinX = Math.max(0, desiredMinX)
+  const expandedMaxX = Math.min(1, desiredMaxX)
+  const expandedMinY = Math.max(0, desiredMinY)
+  const expandedMaxY = Math.min(1, desiredMaxY)
 
   return {
-    x: expandedMinX * videoWidth,
-    y: expandedMinY * videoHeight,
-    width: (expandedMaxX - expandedMinX) * videoWidth,
-    height: (expandedMaxY - expandedMinY) * videoHeight,
+    box: {
+      x: expandedMinX * videoWidth,
+      y: expandedMinY * videoHeight,
+      width: (expandedMaxX - expandedMinX) * videoWidth,
+      height: (expandedMaxY - expandedMinY) * videoHeight,
+    },
+    clipping: {
+      top: desiredMinY < 0,
+      bottom: desiredMaxY > 1,
+      left: desiredMinX < 0,
+      right: desiredMaxX > 1,
+    },
   }
+}
+
+/**
+ * Bounding box (in pixel space) around a face, expanded by
+ * FACE_BOX_MARGIN_RATIO beyond the landmarks' tight contour to approximate a
+ * passport-photo-style crop that includes the whole head and hair — not
+ * just the facial skin the mesh actually covers.
+ */
+export function getFaceBoundingBox(
+  landmarks: NormalizedLandmark[],
+  videoWidth: number,
+  videoHeight: number,
+): BoundingBox | null {
+  return computeFaceBoundingBox(landmarks, videoWidth, videoHeight)?.box ?? null
+}
+
+/**
+ * Like getFaceBoundingBox, but also reports which edges of the desired crop
+ * were clamped to the frame — i.e. where part of the head is likely missing
+ * from the captured image (e.g. the top of the head cut off).
+ */
+export function getHeadClipping(
+  landmarks: NormalizedLandmark[],
+  videoWidth: number,
+  videoHeight: number,
+): HeadClipping | null {
+  const result = computeFaceBoundingBox(landmarks, videoWidth, videoHeight)
+  return result?.clipping ?? null
 }
