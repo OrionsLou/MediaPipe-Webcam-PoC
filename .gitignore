@@ -16,6 +16,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env*
+!.env.example
 
 # Vite cache
 .vite
@@ -45,4 +47,3 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
-.env*
